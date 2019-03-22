@@ -1,0 +1,18 @@
+use crate::ast::{Class, Decl, DeclKind};
+
+#[LALR]
+grammar;
+
+pub Program: Decl = Decl;
+
+pub Decl: Decl = {
+    <lo:@L> <class:Class> <hi:@R> => Decl { kind: DeclKind::Class(class), pos: (lo, hi), },
+};
+
+pub Expr = {
+    ""
+};
+
+Class: Class = <lo:@L> "class" <name:Name> <hi:@R> => Class { pos: (lo, hi) };
+
+Name: String = r"([A-Za-z][A-Za-z0-9_]*)|([A-Za-z_][A-Za-z0-9_]+)" => <>.to_owned();
