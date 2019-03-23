@@ -1,0 +1,10 @@
+[package]
+name = "mochii"
+version = "0.1.0"
+authors = ["Michael Zhang <iptq@protonmail.com>"]
+edition = "2018"
+
+[dependencies]
+dirs = "1.0"
+mochi = { path = ".." }
+rustyline = "3.0"

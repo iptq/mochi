@@ -7,7 +7,7 @@ use crate::Type;
 #[LALR]
 grammar;
 
-pub Program: Vec<Decl> = (<Decl> Sep*)+;
+pub Program: Program = (<Decl> Sep*)+ => Program(<>);
 
 /////
 

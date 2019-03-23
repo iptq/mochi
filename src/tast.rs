@@ -1,18 +1,40 @@
 use symbol::Symbol;
 
+use crate::ast;
+pub use crate::ast::{Class, LValue, Match, Op, Path, Pattern, Use};
+
 use crate::Position;
 use crate::Type;
 
 #[derive(Debug)]
-pub struct Program(pub Vec<Decl>);
+pub enum TypeError {
+    None,
+}
 
 #[derive(Debug)]
-pub struct Class {}
+pub struct Program(pub Vec<Decl>);
+
+impl Program {
+    pub fn from(program: ast::Program) -> Result<Self, TypeError> {
+        program
+            .0
+            .into_iter()
+            .map(|decl| Decl::from(decl))
+            .collect::<Result<Vec<_>, _>>()
+            .map(|decls| Program(decls))
+    }
+}
 
 #[derive(Debug)]
 pub struct Decl {
     pub kind: DeclKind,
     pub pos: Position,
+}
+
+impl Decl {
+    pub fn from(decl: ast::Decl) -> Result<Self, TypeError> {
+        Err(TypeError::None)
+    }
 }
 
 #[derive(Debug)]
@@ -27,6 +49,7 @@ pub enum DeclKind {
 pub struct Expr {
     pub kind: ExprKind,
     pub pos: Position,
+    pub ty: Type,
 }
 
 #[derive(Debug)]
@@ -47,44 +70,12 @@ pub enum ExprKind {
 pub struct Func {
     pub name: Symbol,
     pub args: Vec<FuncArg>,
-    pub returns: Option<TypeLiteral>,
+    pub returns: Type,
     pub body: Vec<Stmt>,
 }
 
 #[derive(Debug)]
-pub struct FuncArg(pub Symbol, pub Option<TypeLiteral>);
-
-#[derive(Debug)]
-pub enum LValue {
-    Ident(Symbol),
-}
-
-#[derive(Debug)]
-pub struct Match(pub Expr, pub Vec<MatchArm>);
-
-#[derive(Debug)]
-pub struct MatchArm(pub Pattern, pub Expr);
-
-#[derive(Debug)]
-pub enum Op {
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Mod,
-}
-
-#[derive(Clone, Debug)]
-pub struct Path(pub Vec<Symbol>);
-
-#[derive(Debug)]
-pub enum Pattern {
-    IntLiteral(String),
-    StringLiteral(String),
-    Tuple(Vec<Pattern>),
-    Var(Symbol),
-    Wildcard,
-}
+pub struct FuncArg(pub Symbol, pub Type);
 
 #[derive(Debug)]
 pub struct Stmt {
@@ -98,12 +89,3 @@ pub enum StmtKind {
     ForLoop(Pattern, Expr, Vec<Stmt>),
     Let(LValue, Expr),
 }
-
-#[derive(Debug)]
-pub struct TypeLiteral {
-    pub kind: Type,
-    pub pos: Position,
-}
-
-#[derive(Debug)]
-pub struct Use(pub Vec<Path>);
