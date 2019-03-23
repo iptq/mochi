@@ -31,7 +31,8 @@ pub enum ExprKind {
     BinOp(Box<Expr>, Op, Box<Expr>),
     Call(Box<Expr>, Box<Expr>),
     IntLiteral(String),
-    Match,
+    Match(Box<Match>),
+    Path(Path),
     Range(Box<Expr>, Box<Expr>),
     StringLiteral(String),
     Tuple(Vec<Expr>),
@@ -40,7 +41,26 @@ pub enum ExprKind {
 }
 
 #[derive(Debug)]
-pub struct Func {}
+pub struct Func {
+    pub name: Symbol,
+    pub args: Vec<FuncArg>,
+    pub returns: Option<TypeLiteral>,
+    pub body: Vec<Stmt>,
+}
+
+#[derive(Debug)]
+pub struct FuncArg(pub Symbol, pub Option<TypeLiteral>);
+
+#[derive(Debug)]
+pub enum LValue {
+    Ident(Symbol),
+}
+
+#[derive(Debug)]
+pub struct Match(pub Expr, pub Vec<MatchArm>);
+
+#[derive(Debug)]
+pub struct MatchArm(pub Pattern, pub Expr);
 
 #[derive(Debug)]
 pub enum Op {
@@ -48,13 +68,26 @@ pub enum Op {
     Sub,
     Mul,
     Div,
+    Mod,
+}
+
+#[derive(Clone, Debug)]
+pub struct Path(pub Vec<Symbol>);
+
+#[derive(Debug)]
+pub enum Pattern {
+    IntLiteral(String),
+    StringLiteral(String),
+    Tuple(Vec<Pattern>),
+    Var(Symbol),
+    Wildcard,
 }
 
 #[derive(Debug)]
 pub enum StmtKind {
     Expr(Expr),
-    ForLoop,
-    Let,
+    ForLoop(Pattern, Expr, Vec<Stmt>),
+    Let(LValue, Expr),
 }
 
 #[derive(Debug)]
@@ -64,4 +97,10 @@ pub struct Stmt {
 }
 
 #[derive(Debug)]
-pub struct Use {}
+pub struct TypeLiteral {
+    pub kind: Type,
+    pub pos: Position,
+}
+
+#[derive(Debug)]
+pub struct Use(pub Vec<Path>);

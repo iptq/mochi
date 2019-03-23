@@ -1,3 +1,5 @@
+use symbol::Symbol;
+
 #[derive(Debug)]
 pub enum Type {
     Unit,
@@ -6,7 +8,8 @@ pub enum Type {
     Sint32,
     Int64,
     Sint64,
-    Record(Vec<(String, Type)>),
+    Record(Vec<(Symbol, Type)>),
+    Var(Symbol),
 }
 
 #[derive(Debug)]

@@ -1,7 +1,8 @@
 use symbol::Symbol;
 
-use crate::ast::{Class, Decl, DeclKind, Expr, ExprKind, Func, Stmt, StmtKind, Use};
+use crate::ast::*;
 use crate::scanner::Token;
+use crate::Type;
 
 #[LALR]
 grammar;
@@ -24,14 +25,17 @@ Expr: Expr = {
 };
 
 Expr2: Expr = {
-    <lo:@L> <expr:Expr3> "%" Int <hi:@R> => expr,
-    <lo:@L> Match <hi:@R> => Expr { kind: ExprKind::Match, pos: (lo, hi) },
+    <lo:@L> <left:Expr3> "*" <right:Expr3> <hi:@R> => Expr { kind: ExprKind::BinOp(Box::new(left), Op::Mul, Box::new(right)), pos: (lo, hi) },
+    <lo:@L> <left:Expr3> "/" <right:Expr3> <hi:@R> => Expr { kind: ExprKind::BinOp(Box::new(left), Op::Div, Box::new(right)), pos: (lo, hi) },
+    <lo:@L> <left:Expr3> "%" <right:Expr3> <hi:@R> => Expr { kind: ExprKind::BinOp(Box::new(left), Op::Mod, Box::new(right)), pos: (lo, hi) },
+
+    <lo:@L> <_match:Match> <hi:@R> => Expr { kind: ExprKind::Match(Box::new(_match)), pos: (lo, hi) },
     <lo:@L> <expr1:Expr3> ".." <expr2:Expr3> <hi:@R> => Expr { kind: ExprKind::Range(Box::new(expr1), Box::new(expr2)), pos: (lo, hi) },
     <expr:Expr3> => expr,
 };
 
 Expr3: Expr = {
-    <lo:@L> <path:Path> <hi:@R> => Expr { kind: ExprKind::Unit, pos: (lo, hi) },
+    <lo:@L> <path:Path> <hi:@R> => Expr { kind: ExprKind::Path(path), pos: (lo, hi) },
     <lo:@L> <int:Int> <hi:@R> => Expr { kind: ExprKind::IntLiteral(int), pos: (lo, hi) },
     <lo:@L> <str:String> <hi:@R> => Expr { kind: ExprKind::StringLiteral(str), pos: (lo, hi) },
     <lo:@L> "(" ")" <hi:@R> => Expr { kind: ExprKind::Unit, pos: (lo, hi) },
@@ -39,47 +43,63 @@ Expr3: Expr = {
     <lo:@L> "(" <exprs:PunctTwo<",", Expr>> ")" <hi:@R> => Expr { kind: ExprKind::Tuple(exprs), pos: (lo, hi) },
 };
 
-Func: Func = "func" <name:Ident> <args:FuncArg*> FuncReturn? "=" <body:Body<MultiPunct<Sep, Stmt>>> => Func { };
+Func: Func = "func" <name:Ident> <args:FuncArg*> <returns:FuncReturn?> "=" <body:Body<MultiPunct<Sep, Stmt>>> => Func { name, args, returns, body };
 
-FuncArg: () = {
-    "(" <name:Ident> ":" <ty:Ident> ")" => {},
-    <name:Ident> => {},
+FuncArg: FuncArg = {
+    "(" <name:Ident> ":" <ty:TypeLiteral> ")" => FuncArg(name, Some(ty)),
+    <name:Ident> => FuncArg(name, None),
 };
 
-FuncReturn: () = "->" Ident => {};
+FuncReturn: TypeLiteral = "->" <ty:TypeLiteral> => ty;
 
-Match: () = "match" Expr ":" Body<MultiPunct<Sep, MatchArm>> => ();
-
-MatchArm: () = Pattern "=>" Expr => ();
-
-Path: () = {
-    Ident => (),
-    Path "." Ident => (),
+LValue: LValue = {
+    <name:Ident> => LValue::Ident(name),
 };
 
-Pattern: () = {
-    "_" => (),
-    Int => (),
-    "(" Punct<",", Pattern> ")" => (),
+Match: Match = "match" <expr:Expr> ":" <body:Body<MultiPunct<Sep, MatchArm>>> => Match(expr, body);
+
+MatchArm: MatchArm = <pat:Pattern> "=>" <expr:Expr> => MatchArm(pat, expr);
+
+Path: Path = {
+    <name:Ident> => Path(vec![name]),
+    <path:Path> "." <name:Ident> => { let mut path = path; path.0.push(name); path },
+};
+
+Pattern: Pattern = {
+    "_" => Pattern::Wildcard,
+    <int:Int> => Pattern::IntLiteral(int),
+    <str:String> => Pattern::StringLiteral(str),
+    <name:Ident> => Pattern::Var(name),
+    "(" <pats:Punct<",", Pattern>> ")" => Pattern::Tuple(pats),
 };
 
 Stmt: Stmt = {
     <lo:@L> <expr:Expr> <hi:@R> => Stmt { kind: StmtKind::Expr(expr), pos: (lo, hi) },
-    <lo:@L> "let" Ident "=" <expr:Expr> <hi:@R> => Stmt { kind: StmtKind::Let, pos: (lo, hi) },
-    <lo:@L> "for" Ident "in" Expr ":" Body<MultiPunct<Sep, Stmt>> <hi:@R> => Stmt { kind: StmtKind::ForLoop, pos: (lo, hi) },
+    <lo:@L> "let" <lvalue:LValue> "=" <expr:Expr> <hi:@R> => Stmt { kind: StmtKind::Let(lvalue, expr), pos: (lo, hi) },
+    <lo:@L> "for" <pat:Pattern> "in" <expr:Expr> ":" <body:Body<MultiPunct<Sep, Stmt>>> <hi:@R> => Stmt { kind: StmtKind::ForLoop(pat, expr, body), pos: (lo, hi) },
 };
 
-Use: Use = "use" UsePath => Use { };
-
-UsePath: Vec<Symbol> = {
-    <path:UsePath1> => path,
-    <outer:UsePath1> "." "(" <inner:Punct<",", UsePath>> ")" => { let mut outer = outer.clone(); outer.extend(inner.into_iter().flatten()); outer },
+TypeLiteral: TypeLiteral = {
+    <lo:@L> <name:Ident> <hi:@R> => TypeLiteral { kind: Type::Var(name), pos: (lo, hi) }
 };
 
-UsePath1: Vec<Symbol> = {
-    <name:Ident> => vec![name],
-    <path:UsePath1> "." <name:Ident> => { let mut path = path.clone(); path.insert(0, name); path },
+Use: Use = "use" <paths:UsePath> => Use(paths);
+
+UsePath: Vec<Path> = {
+    <path:Path> => vec![path],
+    <outer:Path> "." "(" <inner:Punct<",", UsePath>> ")" => {
+        inner.into_iter().flatten().map(|suffix| { let mut outer = outer.clone(); outer.0.extend(suffix.0); outer }).collect()
+    },
 };
+
+// use a.(b, c)
+
+// use a.(b.(c, h), d.(e.f, g))
+// -
+// use a.b.c
+// use a.b.h
+// use a.d.e.f
+// use a.d.g
 
 // macros
 
@@ -150,6 +170,8 @@ extern {
         "(" => Token::SymParenL,
         ")" => Token::SymParenR,
         "%" => Token::SymPercent,
+        "/" => Token::SymSlash,
+        "*" => Token::SymStar,
         "_" => Token::SymUnderscore,
 
         Int => Token::IntLiteral(<String>),

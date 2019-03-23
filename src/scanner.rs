@@ -28,6 +28,8 @@ pub enum Token {
     SymParenL,
     SymParenR,
     SymPercent,
+    SymStar,
+    SymSlash,
     SymUnderscore,
 
     Sym1(Symbol),
@@ -62,7 +64,7 @@ lazy_static! {
         Regex::new(r"^((\.\.)|(==)|(!=)|(->)|(=>))").unwrap(),
 
         // 1-char symbols
-        Regex::new(r#"^[=<>\(\)\[\]:\.,_%"']"#).unwrap(),
+        Regex::new(r#"^[=<>\(\)\[\]:\.,_%"'\*]"#).unwrap(),
 
         // whitespace
         Regex::new(r"^([ \t\n]+)").unwrap(),
@@ -180,7 +182,12 @@ impl<I: Read> Iterator for Scanner<I> {
                                 name => Token::Ident(name.into()),
                             },
                             1 => Token::IntLiteral(mat.as_str().to_owned()),
-                            2 => Token::StringLiteral(mat.as_str().to_owned()),
+                            2 => Token::StringLiteral(
+                                mat.as_str()
+                                    .trim_start_matches("\"")
+                                    .trim_end_matches("\"")
+                                    .to_owned(),
+                            ),
                             3 => match mat.as_str() {
                                 "->" => Token::SymArrow,
                                 "=>" => Token::SymDblArrow,
@@ -195,6 +202,8 @@ impl<I: Read> Iterator for Scanner<I> {
                                 "(" => Token::SymParenL,
                                 ")" => Token::SymParenR,
                                 "%" => Token::SymPercent,
+                                "/" => Token::SymSlash,
+                                "*" => Token::SymStar,
                                 "_" => Token::SymUnderscore,
                                 sym => Token::Sym1(sym.into()),
                             },
