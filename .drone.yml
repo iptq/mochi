@@ -4,6 +4,17 @@ name: default
 steps:
 - name: test
   image: rust:1.33
+  environment:
+    CARGO_TARGET_DIR: /var/cache/drone/target
+    CARGO_HOME: /var/cache/drone/cargo
+  volumes:
+  - name: cache
+    path: /var/cache/drone
   commands:
   - cargo build --verbose --all
   - cargo test --verbose --all
+
+volumes:
+- name: cache
+  host:
+    path: /var/drone/cache/mochi
