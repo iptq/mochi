@@ -9,6 +9,9 @@ grammar;
 
 pub Program: Program = (<Decl> Sep*)+ => Program(<>);
 
+// todo: actually support repl commands?
+pub Line: Expr = Expr;
+
 /////
 
 Class: Class = "class" Ident => Class { };
@@ -40,6 +43,7 @@ Expr3: Expr = {
     <lo:@L> <str:String> <hi:@R> => Expr { kind: ExprKind::StringLiteral(str), pos: (lo, hi) },
     <lo:@L> "(" ")" <hi:@R> => Expr { kind: ExprKind::Unit, pos: (lo, hi) },
     <lo:@L> "(" <expr:Expr> ")" <hi:@R> => Expr { kind: expr.kind, pos: (lo, hi) },
+    <lo:@L> "(" <expr:Expr> "," ")" <hi:@R> => Expr { kind: ExprKind::Tuple(vec![expr]), pos: (lo, hi) },
     <lo:@L> "(" <exprs:PunctTwo<",", Expr>> ")" <hi:@R> => Expr { kind: ExprKind::Tuple(exprs), pos: (lo, hi) },
 };
 

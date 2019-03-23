@@ -11,7 +11,7 @@ mod scanner;
 pub mod tast;
 mod types;
 
-pub use parser::ProgramParser;
+pub use parser::{ProgramParser, LineParser};
 pub use scanner::Scanner;
 use types::Type;
 

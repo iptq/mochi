@@ -1,7 +1,7 @@
 use std::io::Cursor;
 use std::fs::OpenOptions;
 
-use mochi::{tast, ProgramParser, Scanner};
+use mochi::{tast, LineParser, Scanner};
 use rustyline::{error::ReadlineError, Editor};
 
 fn main() {
@@ -16,7 +16,7 @@ fn main() {
         let _ = input.load_history(&path);
     }
 
-    let parser = ProgramParser::new();
+    let parser = LineParser::new();
 
     'repl: loop {
         match input.readline("mochi:> ") {
@@ -32,7 +32,7 @@ fn main() {
                     }
                 };
                 println!("ast: {:?}", ast);
-                let tast = tast::Program::from(ast);
+                // let tast = tast::Program::from(ast);
             }
             Err(ReadlineError::Interrupted) => {
                 println!("^C");
