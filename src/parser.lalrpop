@@ -1,7 +1,7 @@
 use symbol::Symbol;
 
 use crate::ast::*;
-use crate::scanner::Token;
+use crate::Token;
 use crate::Type;
 
 #[LALR]
@@ -152,7 +152,7 @@ PunctTwo<D, T>: Vec<T> = {
 
 extern {
     type Location = usize;
-    type Error = crate::scanner::ScanError;
+    type Error = crate::ParseError;
 
     enum crate::scanner::Token {
         "class" => Token::KwdClass,

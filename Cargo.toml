@@ -12,6 +12,9 @@ members = ["interpreter"]
 lalrpop = "0.16"
 
 [dependencies]
+backtrace = "0.3"
+codespan = "0.2"
+codespan-reporting = "0.2"
 fnv = "1.0"
 lalrpop-util = "0.16"
 lazy_static = "1.0"

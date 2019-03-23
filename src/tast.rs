@@ -1,3 +1,6 @@
+use std::error::Error as StdError;
+use std::fmt;
+
 use symbol::Symbol;
 
 use crate::ast;
@@ -10,6 +13,16 @@ use crate::Type;
 pub enum TypeError {
     None,
 }
+
+impl fmt::Display for TypeError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            _ => write!(f, "unimplemented"),
+        }
+    }
+}
+
+impl StdError for TypeError {}
 
 #[derive(Debug)]
 pub struct Program(pub Vec<Decl>);

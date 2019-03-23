@@ -5,6 +5,8 @@ authors = ["Michael Zhang <iptq@protonmail.com>"]
 edition = "2018"
 
 [dependencies]
+codespan = "0.2"
+codespan-reporting = "0.2"
 dirs = "1.0"
 mochi = { path = ".." }
 rustyline = "3.0"

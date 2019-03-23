@@ -1,6 +1,9 @@
 use std::collections::VecDeque;
+use std::error::Error as StdError;
+use std::fmt;
 use std::io::{BufRead, BufReader, Read};
 
+use lalrpop_util::ParseError as LalrpopError;
 use regex::Regex;
 use symbol::Symbol;
 
@@ -72,11 +75,37 @@ lazy_static! {
 }
 
 #[derive(Debug)]
-pub enum ScanError {
-    BadSymbol(String),
+pub enum ParseError {
+    BadSymbol(usize),
+    InvalidToken(usize),
+    UnrecognizedToken(Option<(usize, Token, usize)>, Vec<String>),
+    ExtraToken(usize, Token, usize),
 }
 
-pub type ScanOutput = Spanned<usize, Token, ScanError>;
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            _ => write!(f, "unimplemented"),
+        }
+    }
+}
+
+impl StdError for ParseError {}
+
+impl From<LalrpopError<usize, Token, ParseError>> for ParseError {
+    fn from(err: LalrpopError<usize, Token, ParseError>) -> Self {
+        match err {
+            LalrpopError::InvalidToken { location } => ParseError::InvalidToken(location),
+            LalrpopError::UnrecognizedToken { token, expected } => {
+                ParseError::UnrecognizedToken(token, expected)
+            }
+            LalrpopError::ExtraToken { token } => ParseError::ExtraToken(token.0, token.1, token.2),
+            LalrpopError::User { error } => error,
+        }
+    }
+}
+
+pub type ScanOutput = Spanned<usize, Token, ParseError>;
 
 pub struct Scanner<I: Read> {
     input: BufReader<I>,
@@ -224,7 +253,7 @@ impl<I: Read> Iterator for Scanner<I> {
 
             // didn't find anything
             self.queue
-                .push_back(Err(ScanError::BadSymbol(line[end..].to_owned())));
+                .push_back(Err(ParseError::BadSymbol(self.pos + end)));
             break;
         }
         self.pos += off;

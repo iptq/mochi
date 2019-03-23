@@ -1,7 +1,10 @@
-use std::io::Cursor;
+use std::borrow::Cow;
 use std::fs::OpenOptions;
+use std::io::Cursor;
 
-use mochi::{tast, LineParser, Scanner};
+use codespan::{CodeMap, FileName};
+use codespan_reporting::termcolor::{ColorChoice, StandardStream};
+use mochi::{tast, Error, LineParser, Scanner};
 use rustyline::{error::ReadlineError, Editor};
 
 fn main() {
@@ -17,17 +20,21 @@ fn main() {
     }
 
     let parser = LineParser::new();
+    let mut termerr = StandardStream::stderr(ColorChoice::Auto);
 
     'repl: loop {
         match input.readline("mochi:> ") {
             Ok(line) => {
                 input.add_history_entry(line.as_ref());
 
+                let mut codemap = CodeMap::new();
+                codemap.add_filemap(FileName::Virtual(Cow::Borrowed("")), line.clone());
+
                 let scanner = Scanner::new(Cursor::new(line));
-                let ast = match parser.parse(scanner) {
+                let ast = match parser.parse(scanner).map_err(Error::from) {
                     Ok(ast) => ast,
                     Err(err) => {
-                        eprintln!("error: {:?}", err);
+                        err.emit(&codemap, &mut termerr);
                         continue 'repl;
                     }
                 };
