@@ -1,7 +1,7 @@
 mochi
 =====
 
-[![Build Status](https://ci.iptq.io/api/badges/mochi/compiler/status.svg)](https://ci.iptq.io/mochi/compiler)
+[![Build Status](https://ci.iptq.io/api/badges/mochi/mochi/status.svg)](https://ci.iptq.io/mochi/mochi)
 
 Example
 -------
