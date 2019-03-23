@@ -1,18 +1,67 @@
 use symbol::Symbol;
 
-use crate::ast::{Class, Decl, DeclKind};
+use crate::ast::{Class, Decl, DeclKind, Expr, ExprKind, Func, Stmt, StmtKind, Use};
 use crate::scanner::Token;
 
 #[LALR]
 grammar;
 
-pub Program: Decl = Decl;
+pub Program: Vec<Decl> = Decl+;
 
-pub Decl: Decl = {
-    <class:Class> => Decl { kind: DeclKind::Class(class) },
-};
+/////
 
 Class: Class = "class" Ident => Class { };
+
+Decl: Decl = {
+    <lo:@L> <class:Class> <hi:@R> => Decl { kind: DeclKind::Class(class), pos: (lo, hi) },
+    <lo:@L> <func:Func> <hi:@R> => Decl { kind: DeclKind::Func(func), pos: (lo, hi) },
+    <lo:@L> <_use:Use> <hi:@R> => Decl { kind: DeclKind::Use(_use), pos: (lo, hi) },
+};
+
+Expr: Expr = {
+    <lo:@L> <int:IntLiteral> <hi:@R> => Expr { kind: ExprKind::IntLiteral(int), pos: (lo, hi) },
+    <lo:@L> "(" <expr:Expr> ")" <hi:@R> => expr,
+    <lo:@L> Match <hi:@R> => Expr { kind: ExprKind::Match, pos: (lo, hi) },
+    <lo:@L> <name:Ident> <hi:@R> => Expr { kind: ExprKind::Var(name), pos: (lo, hi) }
+};
+
+Func: Func = "func" <name:Ident> <args:FuncArg+> "=" Indent <body:Expr> Dedent => Func { };
+
+FuncArg: () = {
+    "(" <name:Ident> ":" <ty:Ident> ")" => {},
+    <name:Ident> => {},
+};
+
+Match: () = "match" Expr => ();
+
+Stmt: Stmt = {
+    <lo:@L> "let" <hi:@R> => Stmt { kind: StmtKind::Let, pos: (lo, hi) }
+};
+
+Use: Use = "use" UsePath => Use { };
+
+UsePath: Vec<Symbol> = {
+    <path:UsePath1> => path,
+    <outer:UsePath1> "." "(" <inner:Comma<UsePath>> ")" => { let mut outer = outer.clone(); outer.extend(inner.into_iter().flatten()); outer },
+};
+
+UsePath1: Vec<Symbol> = {
+    <name:Ident> => vec![name],
+    <path:UsePath1> "." <name:Ident> => { let mut path = path.clone(); path.insert(0, name); path },
+};
+
+// macros
+
+Comma<T>: Vec<T> = {
+    <f:T?> <v:("," <T>)*> ","? => match f {
+        None => v,
+        Some(s) => {
+            let mut v = v;
+            v.insert(0, s);
+            v
+        },
+    }
+}
 
 extern {
     type Location = usize;
@@ -20,6 +69,22 @@ extern {
 
     enum crate::scanner::Token {
         "class" => Token::KwdClass,
+        "func" => Token::KwdFunc,
+        "let" => Token::KwdLet,
+        "match" => Token::KwdMatch,
+        "use" => Token::KwdUse,
+
+        ":" => Token::SymColon,
+        "," => Token::SymComma,
+        "." => Token::SymDot,
+        "=" => Token::SymEqual,
+        "(" => Token::SymParenL,
+        ")" => Token::SymParenR,
+
+        IntLiteral => Token::IntLiteral(<String>),
         Ident => Token::Ident(<Symbol>),
+
+        Indent => Token::Indent,
+        Dedent => Token::Dedent,
     }
 }

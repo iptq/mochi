@@ -9,7 +9,6 @@ use std::io::{self, Read};
 
 mod ast;
 mod ir;
-mod regex_ext;
 mod scanner;
 mod types;
 
@@ -23,13 +22,6 @@ fn main() {
     let stdin = io::stdin();
     let mut scanner = Scanner::new(stdin);
 
-    loop {
-        match scanner.next() {
-            Some(token) => println!("token: {:?}", token),
-            None => break,
-        }
-    }
-
-    // let parser = parser::ProgramParser::new();
-    // let ast = parser.parse(scanner).expect("failed to parse");
+    let parser = parser::ProgramParser::new();
+    let ast = parser.parse(scanner).expect("failed to parse");
 }
