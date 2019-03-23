@@ -10,8 +10,7 @@ pub enum Type {
 }
 
 #[derive(Debug)]
-pub enum Constraint {
-}
+pub enum Constraint {}
 
 #[derive(Debug)]
 pub enum Kind {

@@ -29,8 +29,13 @@ pub struct Expr {
 #[derive(Debug)]
 pub enum ExprKind {
     BinOp(Box<Expr>, Op, Box<Expr>),
+    Call(Box<Expr>, Box<Expr>),
     IntLiteral(String),
     Match,
+    Range(Box<Expr>, Box<Expr>),
+    StringLiteral(String),
+    Tuple(Vec<Expr>),
+    Unit,
     Var(Symbol),
 }
 
@@ -47,6 +52,8 @@ pub enum Op {
 
 #[derive(Debug)]
 pub enum StmtKind {
+    Expr(Expr),
+    ForLoop,
     Let,
 }
 

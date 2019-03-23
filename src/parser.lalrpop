@@ -6,7 +6,7 @@ use crate::scanner::Token;
 #[LALR]
 grammar;
 
-pub Program: Vec<Decl> = Decl+;
+pub Program: Vec<Decl> = (<Decl> Sep*)+;
 
 /////
 
@@ -19,30 +19,61 @@ Decl: Decl = {
 };
 
 Expr: Expr = {
-    <lo:@L> <int:IntLiteral> <hi:@R> => Expr { kind: ExprKind::IntLiteral(int), pos: (lo, hi) },
-    <lo:@L> "(" <expr:Expr> ")" <hi:@R> => expr,
-    <lo:@L> Match <hi:@R> => Expr { kind: ExprKind::Match, pos: (lo, hi) },
-    <lo:@L> <name:Ident> <hi:@R> => Expr { kind: ExprKind::Var(name), pos: (lo, hi) }
+    <lo:@L> <expr1:Expr> <expr2:Expr2> <hi:@R> => Expr { kind: ExprKind::Call(Box::new(expr1), Box::new(expr2)), pos: (lo, hi) },
+    <expr:Expr2> => expr,
 };
 
-Func: Func = "func" <name:Ident> <args:FuncArg+> "=" Indent <body:Expr> Dedent => Func { };
+Expr2: Expr = {
+    <lo:@L> <expr:Expr3> "%" Int <hi:@R> => expr,
+    <lo:@L> Match <hi:@R> => Expr { kind: ExprKind::Match, pos: (lo, hi) },
+    <lo:@L> <expr1:Expr3> ".." <expr2:Expr3> <hi:@R> => Expr { kind: ExprKind::Range(Box::new(expr1), Box::new(expr2)), pos: (lo, hi) },
+    <expr:Expr3> => expr,
+};
+
+Expr3: Expr = {
+    <lo:@L> <path:Path> <hi:@R> => Expr { kind: ExprKind::Unit, pos: (lo, hi) },
+    <lo:@L> <int:Int> <hi:@R> => Expr { kind: ExprKind::IntLiteral(int), pos: (lo, hi) },
+    <lo:@L> <str:String> <hi:@R> => Expr { kind: ExprKind::StringLiteral(str), pos: (lo, hi) },
+    <lo:@L> "(" ")" <hi:@R> => Expr { kind: ExprKind::Unit, pos: (lo, hi) },
+    <lo:@L> "(" <expr:Expr> ")" <hi:@R> => Expr { kind: expr.kind, pos: (lo, hi) },
+    <lo:@L> "(" <exprs:PunctTwo<",", Expr>> ")" <hi:@R> => Expr { kind: ExprKind::Tuple(exprs), pos: (lo, hi) },
+};
+
+Func: Func = "func" <name:Ident> <args:FuncArg*> FuncReturn? "=" <body:Body<MultiPunct<Sep, Stmt>>> => Func { };
 
 FuncArg: () = {
     "(" <name:Ident> ":" <ty:Ident> ")" => {},
     <name:Ident> => {},
 };
 
-Match: () = "match" Expr => ();
+FuncReturn: () = "->" Ident => {};
+
+Match: () = "match" Expr ":" Body<MultiPunct<Sep, MatchArm>> => ();
+
+MatchArm: () = Pattern "=>" Expr => ();
+
+Path: () = {
+    Ident => (),
+    Path "." Ident => (),
+};
+
+Pattern: () = {
+    "_" => (),
+    Int => (),
+    "(" Punct<",", Pattern> ")" => (),
+};
 
 Stmt: Stmt = {
-    <lo:@L> "let" <hi:@R> => Stmt { kind: StmtKind::Let, pos: (lo, hi) }
+    <lo:@L> <expr:Expr> <hi:@R> => Stmt { kind: StmtKind::Expr(expr), pos: (lo, hi) },
+    <lo:@L> "let" Ident "=" <expr:Expr> <hi:@R> => Stmt { kind: StmtKind::Let, pos: (lo, hi) },
+    <lo:@L> "for" Ident "in" Expr ":" Body<MultiPunct<Sep, Stmt>> <hi:@R> => Stmt { kind: StmtKind::ForLoop, pos: (lo, hi) },
 };
 
 Use: Use = "use" UsePath => Use { };
 
 UsePath: Vec<Symbol> = {
     <path:UsePath1> => path,
-    <outer:UsePath1> "." "(" <inner:Comma<UsePath>> ")" => { let mut outer = outer.clone(); outer.extend(inner.into_iter().flatten()); outer },
+    <outer:UsePath1> "." "(" <inner:Punct<",", UsePath>> ")" => { let mut outer = outer.clone(); outer.extend(inner.into_iter().flatten()); outer },
 };
 
 UsePath1: Vec<Symbol> = {
@@ -52,14 +83,46 @@ UsePath1: Vec<Symbol> = {
 
 // macros
 
-Comma<T>: Vec<T> = {
-    <f:T?> <v:("," <T>)*> ","? => match f {
+Body<T>: T = {
+    Sep* Indent <t:T> Dedent => t,
+};
+
+MultiPunct<D, T>: Vec<T> = {
+    <f:T?> <v:(D+ <T>)*> D* => match f {
         None => v,
-        Some(s) => {
+        Some(f) => {
             let mut v = v;
-            v.insert(0, s);
+            v.insert(0, f);
             v
         },
+    }
+}
+
+Punct<D, T>: Vec<T> = {
+    <f:T?> <v:(D <T>)*> D? => match f {
+        None => v,
+        Some(f) => {
+            let mut v = v;
+            v.insert(0, f);
+            v
+        },
+    }
+}
+
+PunctOne<D, T>: Vec<T> = {
+    <f:T> <v:(D <T>)*> D? => {
+        let mut v = v;
+        v.insert(0, f);
+        v
+    }
+}
+
+PunctTwo<D, T>: Vec<T> = {
+    <f:T> D <s:T> <v:(D <T>)*> D? => {
+        let mut v = v;
+        v.insert(0, f);
+        v.insert(1, s);
+        v
     }
 }
 
@@ -69,10 +132,16 @@ extern {
 
     enum crate::scanner::Token {
         "class" => Token::KwdClass,
+        "for" => Token::KwdFor,
         "func" => Token::KwdFunc,
+        "in" => Token::KwdIn,
         "let" => Token::KwdLet,
         "match" => Token::KwdMatch,
         "use" => Token::KwdUse,
+
+        "->" => Token::SymArrow,
+        "=>" => Token::SymDblArrow,
+        ".." => Token::SymDblDot,
 
         ":" => Token::SymColon,
         "," => Token::SymComma,
@@ -80,11 +149,15 @@ extern {
         "=" => Token::SymEqual,
         "(" => Token::SymParenL,
         ")" => Token::SymParenR,
+        "%" => Token::SymPercent,
+        "_" => Token::SymUnderscore,
 
-        IntLiteral => Token::IntLiteral(<String>),
+        Int => Token::IntLiteral(<String>),
+        String => Token::StringLiteral(<String>),
         Ident => Token::Ident(<Symbol>),
 
         Indent => Token::Indent,
         Dedent => Token::Dedent,
+        Sep => Token::Sep,
     }
 }

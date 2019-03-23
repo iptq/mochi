@@ -17,24 +17,30 @@ pub enum Token {
     KwdMatch,
     KwdUse,
 
+    SymArrow,
+    SymDblArrow,
+    SymDblDot,
+
     SymColon,
     SymComma,
     SymDot,
-    SymDblDot,
     SymEqual,
     SymParenL,
     SymParenR,
     SymPercent,
+    SymUnderscore,
 
     Sym1(Symbol),
     Sym2(Symbol),
     Symbol(Symbol),
 
     IntLiteral(String),
+    StringLiteral(String),
     Ident(Symbol),
 
     Indent,
     Dedent,
+    Sep,
 }
 
 lazy_static! {
@@ -42,10 +48,23 @@ lazy_static! {
 
     // slow and lazy way, will replace with some efficient RegexSet later
     pub static ref TABLE: Vec<Regex> = vec![
+        // ident
         Regex::new(r"^(([A-Za-z][A-Za-z0-9_]*)|([A-Za-z_][A-Za-z0-9_]+))").unwrap(),
+
+        // int literals
         Regex::new(r"^([0-9]+)").unwrap(),
-        Regex::new(r"^((\.\.)|(==)|(!=)|(->))").unwrap(),
+
+        // string literals
+        // TODO: modal scanning?
+        Regex::new(r#"^("[^"]*")"#).unwrap(),
+
+        // 2-char symbols
+        Regex::new(r"^((\.\.)|(==)|(!=)|(->)|(=>))").unwrap(),
+
+        // 1-char symbols
         Regex::new(r#"^[=<>\(\)\[\]:\.,_%"']"#).unwrap(),
+
+        // whitespace
         Regex::new(r"^([ \t\n]+)").unwrap(),
     ];
 }
@@ -92,14 +111,14 @@ impl<I: Read> Iterator for Scanner<I> {
                 Ok(n) => {
                     off += n;
                     if n == 0 {
-                        break;
-                    } else if line.trim().len() == 0 {
-                        // count dedents
                         while self.indents.len() > 1 {
                             self.indents.pop();
-                            self.queue.push_back(Ok((self.pos, Token::Dedent, self.pos)));
+                            self.queue
+                                .push_back(Ok((self.pos, Token::Dedent, self.pos)));
                         }
-                        continue;
+                        return self.queue.pop_front();
+                    } else if line.trim().len() == 0 {
+                        break;
                     } else if line.ends_with("\\\r\n") || line.ends_with("\\\n") {
                         line = line.trim_end().trim_end_matches('\\').to_owned();
                         // read another line
@@ -112,25 +131,32 @@ impl<I: Read> Iterator for Scanner<I> {
             }
         }
 
-        let whitespace = match WHITESPACE.find(&line) {
-            Some(mat) => mat.end() - mat.start(),
-            None => 0,
-        };
+        if line.trim().len() > 0 {
+            let whitespace = match WHITESPACE.find(&line) {
+                Some(mat) => mat.end() - mat.start(),
+                None => 0,
+            };
 
-        match self.indents.last() {
-            Some(n) => {
-                if whitespace < *n {
-                    let ind = self.indents.binary_search(&whitespace).expect("inconsistent indentation");
-                    for i in 0..ind {
-                        self.indents.pop();
-                        self.queue.push_back(Ok((self.pos, Token::Dedent, self.pos)));
+            match self.indents.last() {
+                Some(n) => {
+                    if whitespace < *n {
+                        let ind = self
+                            .indents
+                            .binary_search(&whitespace)
+                            .expect("inconsistent indentation");
+                        for i in ind..self.indents.len() - 1 {
+                            self.indents.pop();
+                            self.queue
+                                .push_back(Ok((self.pos, Token::Dedent, self.pos)));
+                        }
+                    } else if whitespace > *n {
+                        self.indents.push(whitespace);
+                        self.queue
+                            .push_back(Ok((self.pos, Token::Indent, self.pos + whitespace)));
                     }
-                } else if whitespace > *n {
-                    self.indents.push(whitespace);
-                    self.queue.push_back(Ok((self.pos, Token::Indent, self.pos + whitespace)));
                 }
+                None => unreachable!("indent stack empty"),
             }
-            None => unreachable!("indent stack empty"),
         }
 
         line = line.trim().to_owned();
@@ -154,11 +180,14 @@ impl<I: Read> Iterator for Scanner<I> {
                                 name => Token::Ident(name.into()),
                             },
                             1 => Token::IntLiteral(mat.as_str().to_owned()),
-                            2 => match mat.as_str() {
+                            2 => Token::StringLiteral(mat.as_str().to_owned()),
+                            3 => match mat.as_str() {
+                                "->" => Token::SymArrow,
+                                "=>" => Token::SymDblArrow,
                                 ".." => Token::SymDblDot,
                                 sym => Token::Sym2(sym.into()),
                             },
-                            3 => match mat.as_str() {
+                            4 => match mat.as_str() {
                                 ":" => Token::SymColon,
                                 "," => Token::SymComma,
                                 "." => Token::SymDot,
@@ -166,9 +195,10 @@ impl<I: Read> Iterator for Scanner<I> {
                                 "(" => Token::SymParenL,
                                 ")" => Token::SymParenR,
                                 "%" => Token::SymPercent,
+                                "_" => Token::SymUnderscore,
                                 sym => Token::Sym1(sym.into()),
                             },
-                            4 => {
+                            5 => {
                                 end += hi;
                                 continue 'outer;
                             }
@@ -189,6 +219,14 @@ impl<I: Read> Iterator for Scanner<I> {
             break;
         }
         self.pos += off;
-        self.queue.pop_front()
+        if self.indents.len() > 1 {
+            self.queue.push_back(Ok((self.pos, Token::Sep, self.pos)));
+        }
+
+        if line.trim().len() == 0 {
+            self.next()
+        } else {
+            self.queue.pop_front()
+        }
     }
 }

@@ -1,11 +1,11 @@
 use std.io.(Scanner, stdin)
 
-func each (n: int) =
+func each (n: int) -> string =
   match (i % 3, i % 5):
-    0, 0 => "FizzBuzz"
-    0, _ => "Fizz"
-    _, 0 => "Buzz"
-    _ => n.toString ()
+    (0, 0) => "FizzBuzz"
+    (0, _) => "Fizz"
+    (_, 0) => "Buzz"
+    _ => n
 
 func main =
   let scanner = Scanner.new stdin
