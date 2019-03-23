@@ -1,5 +1,5 @@
-use crate::Type;
 use crate::Position;
+use crate::Type;
 
 #[derive(Debug)]
 pub enum DeclKind {
@@ -10,29 +10,25 @@ pub enum DeclKind {
 #[derive(Debug)]
 pub struct Decl {
     pub kind: DeclKind,
-    pub pos: Position,
 }
 
 #[derive(Debug)]
-pub struct Class {
-    pub pos: Position,
-}
+pub struct Class {}
 
 #[derive(Debug)]
 pub enum Constraint {
-	Is(String, Class),
+    Is(String, Class),
 }
 
 #[derive(Debug)]
 pub enum KindKind {
-	Type(Type),
-	ParamType(Box<Kind>, Box<Kind>),
+    Type(Type),
+    ParamType(Box<Kind>, Box<Kind>),
 }
 
 #[derive(Debug)]
 pub struct Kind {
-	pub kind: KindKind,
-	pub pos: Position,
+    pub kind: KindKind,
 }
 
 #[derive(Debug)]
@@ -44,7 +40,6 @@ pub enum ExprKind {
 #[derive(Debug)]
 pub struct Expr {
     pub kind: ExprKind,
-    pub pos: Position,
 }
 
 #[derive(Debug)]

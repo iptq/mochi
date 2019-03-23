@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate lazy_static;
+
 use lalrpop_util::lalrpop_mod;
 
 lalrpop_mod!(parser);
@@ -6,21 +9,27 @@ use std::io::{self, Read};
 
 mod ast;
 mod ir;
+mod regex_ext;
 mod scanner;
 mod types;
 
+use scanner::Scanner;
 use types::Type;
 
-pub type Position = (usize, usize);
+type Position = (usize, usize);
+type Spanned<Location, Token, Error> = Result<(Location, Token, Location), Error>;
 
 fn main() {
-    let mut stdin = io::stdin();
-    let mut buf = Vec::new();
-    stdin.read_to_end(&mut buf).expect("failed to read");
+    let stdin = io::stdin();
+    let mut scanner = Scanner::new(stdin);
 
-    let contents = String::from_utf8(buf).expect("invalid utf8");
-    let parser = parser::ProgramParser::new();
-    let ast = parser.parse(&contents).expect("failed to parse");
+    loop {
+        match scanner.next() {
+            Some(token) => println!("token: {:?}", token),
+            None => break,
+        }
+    }
 
-    println!("contents: {:?}", ast);
+    // let parser = parser::ProgramParser::new();
+    // let ast = parser.parse(scanner).expect("failed to parse");
 }
