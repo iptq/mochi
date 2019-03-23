@@ -29,6 +29,8 @@ Todos
 
 - [x] Parsing
 - [ ] Type-checking
+- [ ] Structs
+- [ ] Interpreter
 
 Fixes:
 - [ ] Use a less-fucked RegexSet implementation.
