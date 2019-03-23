@@ -32,7 +32,8 @@ impl Error {
         let diagnostic = match self {
             Error::Parse(ParseError::BadSymbol(lo)) => {
                 let message = format!("Invalid symbol.");
-                let label = Label::new_primary(Span::new(ByteIndex(*lo as u32), ByteIndex(*lo as u32)));
+                let label =
+                    Label::new_primary(Span::new(ByteIndex(*lo as u32), ByteIndex(*lo as u32)));
                 Diagnostic::new_error(message).with_label(label)
             }
             Error::Parse(ParseError::UnrecognizedToken(token, expected)) => {

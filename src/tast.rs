@@ -46,7 +46,16 @@ pub struct Decl {
 
 impl Decl {
     pub fn from(decl: ast::Decl) -> Result<Self, TypeError> {
-        Err(TypeError::None)
+        use ast::DeclKind as aDeclKind;
+        Ok(Decl {
+            kind: match decl.kind {
+                aDeclKind::Class(class) => DeclKind::Class(class),
+                aDeclKind::Func(func) => DeclKind::Func(Func::from(func)?),
+                aDeclKind::Type(ty) => DeclKind::Type(ty),
+                aDeclKind::Use(_use) => DeclKind::Use(_use),
+            },
+            pos: decl.pos,
+        })
     }
 }
 
@@ -63,6 +72,34 @@ pub struct Expr {
     pub kind: ExprKind,
     pub pos: Position,
     pub ty: Type,
+}
+
+impl Expr {
+    pub fn from(expr: ast::Expr) -> Result<Self, TypeError> {
+        use ast::ExprKind as aExprKind;
+        let (kind, ty) = match expr.kind {
+            aExprKind::BinOp(left, op, right) => (
+                ExprKind::BinOp(
+                    Box::new(Expr::from(*left)?),
+                    op,
+                    Box::new(Expr::from(*right)?),
+                ),
+                Type::gen(),
+            ),
+            aExprKind::Call(left, right) => (
+                ExprKind::Call(Box::new(Expr::from(*left)?), Box::new(Expr::from(*right)?)),
+                Type::gen(),
+            ),
+            aExprKind::IntLiteral(nstr) => (ExprKind::IntLiteral(nstr), Type::gen()),
+            aExprKind::Unit => (ExprKind::Unit, Type::Unit),
+            _ => (ExprKind::Unit, Type::gen()),
+        };
+        Ok(Expr {
+            kind,
+            pos: expr.pos,
+            ty,
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -85,6 +122,12 @@ pub struct Func {
     pub args: Vec<FuncArg>,
     pub returns: Type,
     pub body: Vec<Stmt>,
+}
+
+impl Func {
+    pub fn from(func: ast::Func) -> Result<Self, TypeError> {
+        Err(TypeError::None)
+    }
 }
 
 #[derive(Debug)]

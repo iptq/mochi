@@ -10,6 +10,15 @@ pub enum Type {
     Sint64,
     Record(Vec<(Symbol, Type)>),
     Var(Symbol),
+
+    #[doc(hidden)]
+    N(Symbol),
+}
+
+impl Type {
+    pub fn gen() -> Type {
+        Type::N(Symbol::gensym())
+    }
 }
 
 #[derive(Debug)]

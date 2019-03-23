@@ -39,7 +39,9 @@ fn main() {
                     }
                 };
                 println!("ast: {:?}", ast);
-                // let tast = tast::Program::from(ast);
+
+                let tast = tast::Expr::from(ast);
+                println!("tast: {:?}", tast);
             }
             Err(ReadlineError::Interrupted) => {
                 println!("^C");
