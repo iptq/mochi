@@ -30,6 +30,7 @@ Todos
 - [x] Parsing
 - [ ] Type-checking
 - [ ] Structs
+- [ ] IR / Codegen
 - [ ] Interpreter
 
 Fixes:
