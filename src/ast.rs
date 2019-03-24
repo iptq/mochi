@@ -24,6 +24,7 @@ pub struct Decl {
 #[derive(Debug)]
 pub enum DeclKind {
     Class(Class),
+    Extern(Extern),
     Func(Func),
     Type(Type),
     Use(Use),
@@ -48,6 +49,12 @@ pub enum ExprKind {
     Tuple(Vec<Expr>),
     Unit,
     Var(Symbol),
+}
+
+#[derive(Debug)]
+pub struct Extern {
+    pub name: Symbol,
+    pub ty: Type,
 }
 
 #[derive(Debug)]

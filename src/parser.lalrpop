@@ -22,6 +22,7 @@ LineInner: Line = {
 Class: Class = "class" Ident => Class { };
 
 Decl: Decl = {
+    <lo:@L> <_extern:Extern> <hi:@R> => Decl { kind: DeclKind::Extern(_extern), pos: (lo, hi) },
     <lo:@L> <class:Class> <hi:@R> => Decl { kind: DeclKind::Class(class), pos: (lo, hi) },
     <lo:@L> <func:Func> <hi:@R> => Decl { kind: DeclKind::Func(func), pos: (lo, hi) },
     <lo:@L> <_use:Use> <hi:@R> => Decl { kind: DeclKind::Use(_use), pos: (lo, hi) },
@@ -58,12 +59,16 @@ Expr4: Expr = {
     <lo:@L> "(" <exprs:PunctTwo<",", Expr>> ")" <hi:@R> => Expr { kind: ExprKind::Tuple(exprs), pos: (lo, hi), ty: Type::gen() },
 };
 
+Extern: Extern = "extern" <name:Ident> ":" <ty:TypeLiteral> => Extern { name, ty };
+
 Func: Func = "func" <name:Ident> <args:FuncArg*> <returns:FuncReturn?> "=" <body:Body<MultiPunct<Sep, Stmt>>> => Func { name, args, returns: returns.unwrap_or_else(|| Type::Unit), body, ty: Type::gen() };
 
 FuncArg: FuncArg = {
     "(" <name:Ident> ":" <ty:TypeLiteral> ")" => FuncArg(name, ty),
     <name:Ident> => FuncArg(name, Type::gen()),
 };
+
+FuncSig = Ident FuncArg* FuncReturn?;
 
 FuncReturn: Type = "->" <ty:TypeLiteral> => ty;
 
@@ -95,7 +100,13 @@ Stmt: Stmt = {
 };
 
 TypeLiteral: Type = {
-    <lo:@L> <name:Ident> <hi:@R> => Type::Var(name),
+    <ty:TypeLiteral2> => ty,
+    <ty1:TypeLiteral2> "->" <ty2:TypeLiteral> => Type::Func(Box::new(ty1), Box::new(ty2)),
+};
+
+TypeLiteral2: Type = {
+    <name:Ident> => Type::Var(name),
+    "(" <ty:TypeLiteral> ")" => ty,
 };
 
 Use: Use = "use" <paths:UsePath> => Use(paths);
@@ -173,6 +184,7 @@ extern {
 
     enum crate::scanner::Token {
         "class" => Token::KwdClass,
+        "extern" => Token::KwdExtern,
         "for" => Token::KwdFor,
         "func" => Token::KwdFunc,
         "in" => Token::KwdIn,
