@@ -25,6 +25,8 @@ fn compile(file: File) -> Result<String, Error> {
         Err(err) => return Err(Error::from(err)),
     };
 
+    use mochi::TypeCheck;
+    println!("constraints: {:?}", ast.constraints());
     Ok(format!("ast: {:?}", ast))
 }
 

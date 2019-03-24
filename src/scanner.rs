@@ -26,13 +26,16 @@ pub enum Token {
 
     SymColon,
     SymComma,
+    SymDash,
     SymDot,
     SymEqual,
     SymParenL,
     SymParenR,
     SymPercent,
-    SymStar,
+    SymPlus,
+    SymSemicolon,
     SymSlash,
+    SymStar,
     SymUnderscore,
 
     Sym1(Symbol),
@@ -67,7 +70,7 @@ lazy_static! {
         Regex::new(r"^((\.\.)|(==)|(!=)|(->)|(=>))").unwrap(),
 
         // 1-char symbols
-        Regex::new(r#"^[=<>\(\)\[\]:\.,_%"'\*]"#).unwrap(),
+        Regex::new(r#"^[=<>\(\)\[\]:\.,_%"'\*+-;]"#).unwrap(),
 
         // whitespace
         Regex::new(r"^([ \t\n]+)").unwrap(),
@@ -226,11 +229,14 @@ impl<I: Read> Iterator for Scanner<I> {
                             4 => match mat.as_str() {
                                 ":" => Token::SymColon,
                                 "," => Token::SymComma,
+                                "-" => Token::SymDash,
                                 "." => Token::SymDot,
                                 "=" => Token::SymEqual,
                                 "(" => Token::SymParenL,
                                 ")" => Token::SymParenR,
                                 "%" => Token::SymPercent,
+                                "+" => Token::SymPlus,
+                                ";" => Token::SymSemicolon,
                                 "/" => Token::SymSlash,
                                 "*" => Token::SymStar,
                                 "_" => Token::SymUnderscore,

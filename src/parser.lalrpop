@@ -7,12 +7,17 @@ use crate::Type;
 #[LALR]
 grammar;
 
-pub Program: Program = (<Decl> Sep*)+ => Program(<>);
+pub Program: Program = MultiPunct<Sep, Decl> => Program(<>);
 
 // todo: actually support repl commands?
-pub Line: Expr = Expr;
+pub Line: Line = Sep* <LineInner> Sep*;
 
 /////
+
+LineInner: Line = {
+    Expr => Line::Expr(<>),
+    Decl => Line::Decl(<>),
+};
 
 Class: Class = "class" Ident => Class { };
 
@@ -23,38 +28,44 @@ Decl: Decl = {
 };
 
 Expr: Expr = {
-    <lo:@L> <expr1:Expr> <expr2:Expr2> <hi:@R> => Expr { kind: ExprKind::Call(Box::new(expr1), Box::new(expr2)), pos: (lo, hi) },
+    <lo:@L> <expr1:Expr> <expr2:Expr2> <hi:@R> => Expr { kind: ExprKind::Call(Box::new(expr1), Box::new(expr2)), pos: (lo, hi), ty: Type::gen() },
     <expr:Expr2> => expr,
 };
 
 Expr2: Expr = {
-    <lo:@L> <left:Expr3> "*" <right:Expr3> <hi:@R> => Expr { kind: ExprKind::BinOp(Box::new(left), Op::Mul, Box::new(right)), pos: (lo, hi) },
-    <lo:@L> <left:Expr3> "/" <right:Expr3> <hi:@R> => Expr { kind: ExprKind::BinOp(Box::new(left), Op::Div, Box::new(right)), pos: (lo, hi) },
-    <lo:@L> <left:Expr3> "%" <right:Expr3> <hi:@R> => Expr { kind: ExprKind::BinOp(Box::new(left), Op::Mod, Box::new(right)), pos: (lo, hi) },
+    <lo:@L> <left:Expr2> "+" <right:Expr3> <hi:@R> => Expr { kind: ExprKind::BinOp(Box::new(left), Op::Add, Box::new(right)), pos: (lo, hi), ty: Type::gen() },
+    <lo:@L> <left:Expr2> "-" <right:Expr3> <hi:@R> => Expr { kind: ExprKind::BinOp(Box::new(left), Op::Sub, Box::new(right)), pos: (lo, hi), ty: Type::gen() },
 
-    <lo:@L> <_match:Match> <hi:@R> => Expr { kind: ExprKind::Match(Box::new(_match)), pos: (lo, hi) },
-    <lo:@L> <expr1:Expr3> ".." <expr2:Expr3> <hi:@R> => Expr { kind: ExprKind::Range(Box::new(expr1), Box::new(expr2)), pos: (lo, hi) },
+    <lo:@L> <_match:Match> <hi:@R> => Expr { kind: ExprKind::Match(Box::new(_match)), pos: (lo, hi), ty: Type::gen() },
+    <lo:@L> <expr1:Expr3> ".." <expr2:Expr3> <hi:@R> => Expr { kind: ExprKind::Range(Box::new(expr1), Box::new(expr2)), pos: (lo, hi), ty: Type::gen() },
     <expr:Expr3> => expr,
 };
 
 Expr3: Expr = {
-    <lo:@L> <path:Path> <hi:@R> => Expr { kind: ExprKind::Path(path), pos: (lo, hi) },
-    <lo:@L> <int:Int> <hi:@R> => Expr { kind: ExprKind::IntLiteral(int), pos: (lo, hi) },
-    <lo:@L> <str:String> <hi:@R> => Expr { kind: ExprKind::StringLiteral(str), pos: (lo, hi) },
-    <lo:@L> "(" ")" <hi:@R> => Expr { kind: ExprKind::Unit, pos: (lo, hi) },
-    <lo:@L> "(" <expr:Expr> ")" <hi:@R> => Expr { kind: expr.kind, pos: (lo, hi) },
-    <lo:@L> "(" <expr:Expr> "," ")" <hi:@R> => Expr { kind: ExprKind::Tuple(vec![expr]), pos: (lo, hi) },
-    <lo:@L> "(" <exprs:PunctTwo<",", Expr>> ")" <hi:@R> => Expr { kind: ExprKind::Tuple(exprs), pos: (lo, hi) },
+    <lo:@L> <left:Expr3> "*" <right:Expr4> <hi:@R> => Expr { kind: ExprKind::BinOp(Box::new(left), Op::Mul, Box::new(right)), pos: (lo, hi), ty: Type::gen() },
+    <lo:@L> <left:Expr3> "/" <right:Expr4> <hi:@R> => Expr { kind: ExprKind::BinOp(Box::new(left), Op::Div, Box::new(right)), pos: (lo, hi), ty: Type::gen() },
+    <lo:@L> <left:Expr4> "%" <right:Expr4> <hi:@R> => Expr { kind: ExprKind::BinOp(Box::new(left), Op::Mod, Box::new(right)), pos: (lo, hi), ty: Type::gen() },
+    <expr:Expr4> => expr,
 };
 
-Func: Func = "func" <name:Ident> <args:FuncArg*> <returns:FuncReturn?> "=" <body:Body<MultiPunct<Sep, Stmt>>> => Func { name, args, returns, body };
+Expr4: Expr = {
+    <lo:@L> <path:Path> <hi:@R> => Expr { kind: ExprKind::Path(path), pos: (lo, hi), ty: Type::gen() },
+    <lo:@L> <int:Int> <hi:@R> => Expr { kind: ExprKind::IntLiteral(int), pos: (lo, hi), ty: Type::gen() },
+    <lo:@L> <str:String> <hi:@R> => Expr { kind: ExprKind::StringLiteral(str), pos: (lo, hi), ty: Type::gen() },
+    <lo:@L> "(" ")" <hi:@R> => Expr { kind: ExprKind::Unit, pos: (lo, hi), ty: Type::Unit },
+    <lo:@L> "(" <expr:Expr> ")" <hi:@R> => Expr { kind: expr.kind, pos: (lo, hi), ty: Type::gen() },
+    <lo:@L> "(" <expr:Expr> "," ")" <hi:@R> => Expr { kind: ExprKind::Tuple(vec![expr]), pos: (lo, hi), ty: Type::gen() },
+    <lo:@L> "(" <exprs:PunctTwo<",", Expr>> ")" <hi:@R> => Expr { kind: ExprKind::Tuple(exprs), pos: (lo, hi), ty: Type::gen() },
+};
+
+Func: Func = "func" <name:Ident> <args:FuncArg*> <returns:FuncReturn?> "=" <body:Body<MultiPunct<Sep, Stmt>>> => Func { name, args, returns: returns.unwrap_or_else(|| Type::Unit), body, ty: Type::gen() };
 
 FuncArg: FuncArg = {
-    "(" <name:Ident> ":" <ty:TypeLiteral> ")" => FuncArg(name, Some(ty)),
-    <name:Ident> => FuncArg(name, None),
+    "(" <name:Ident> ":" <ty:TypeLiteral> ")" => FuncArg(name, ty),
+    <name:Ident> => FuncArg(name, Type::gen()),
 };
 
-FuncReturn: TypeLiteral = "->" <ty:TypeLiteral> => ty;
+FuncReturn: Type = "->" <ty:TypeLiteral> => ty;
 
 LValue: LValue = {
     <name:Ident> => LValue::Ident(name),
@@ -83,8 +94,8 @@ Stmt: Stmt = {
     <lo:@L> "for" <pat:Pattern> "in" <expr:Expr> ":" <body:Body<MultiPunct<Sep, Stmt>>> <hi:@R> => Stmt { kind: StmtKind::ForLoop(pat, expr, body), pos: (lo, hi) },
 };
 
-TypeLiteral: TypeLiteral = {
-    <lo:@L> <name:Ident> <hi:@R> => TypeLiteral { kind: Type::Var(name), pos: (lo, hi) }
+TypeLiteral: Type = {
+    <lo:@L> <name:Ident> <hi:@R> => Type::Var(name),
 };
 
 Use: Use = "use" <paths:UsePath> => Use(paths);
@@ -107,7 +118,13 @@ UsePath: Vec<Path> = {
 
 // macros
 
+Sep = {
+    ";",
+    LineSep,
+};
+
 Body<T>: T = {
+    "(" <t:T> ")" => t,
     Sep* Indent <t:T> Dedent => t,
 };
 
@@ -169,11 +186,14 @@ extern {
 
         ":" => Token::SymColon,
         "," => Token::SymComma,
+        "-" => Token::SymDash,
         "." => Token::SymDot,
         "=" => Token::SymEqual,
         "(" => Token::SymParenL,
         ")" => Token::SymParenR,
         "%" => Token::SymPercent,
+        "+" => Token::SymPlus,
+        ";" => Token::SymSemicolon,
         "/" => Token::SymSlash,
         "*" => Token::SymStar,
         "_" => Token::SymUnderscore,
@@ -184,6 +204,6 @@ extern {
 
         Indent => Token::Indent,
         Dedent => Token::Dedent,
-        Sep => Token::Sep,
+        LineSep => Token::Sep,
     }
 }

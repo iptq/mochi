@@ -10,3 +10,4 @@ codespan-reporting = "0.2"
 dirs = "1.0"
 mochi = { path = ".." }
 rustyline = "3.0"
+symbol = "0.1"

@@ -7,6 +7,12 @@ use crate::Type;
 pub struct Program(pub Vec<Decl>);
 
 #[derive(Debug)]
+pub enum Line {
+    Decl(Decl),
+    Expr(Expr),
+}
+
+#[derive(Debug)]
 pub struct Class {}
 
 #[derive(Debug)]
@@ -27,6 +33,7 @@ pub enum DeclKind {
 pub struct Expr {
     pub kind: ExprKind,
     pub pos: Position,
+    pub ty: Type,
 }
 
 #[derive(Debug)]
@@ -47,12 +54,13 @@ pub enum ExprKind {
 pub struct Func {
     pub name: Symbol,
     pub args: Vec<FuncArg>,
-    pub returns: Option<TypeLiteral>,
+    pub returns: Type,
     pub body: Vec<Stmt>,
+    pub ty: Type,
 }
 
 #[derive(Debug)]
-pub struct FuncArg(pub Symbol, pub Option<TypeLiteral>);
+pub struct FuncArg(pub Symbol, pub Type);
 
 #[derive(Debug)]
 pub enum LValue {
@@ -97,12 +105,6 @@ pub enum StmtKind {
     Expr(Expr),
     ForLoop(Pattern, Expr, Vec<Stmt>),
     Let(LValue, Expr),
-}
-
-#[derive(Debug)]
-pub struct TypeLiteral {
-    pub kind: Type,
-    pub pos: Position,
 }
 
 #[derive(Debug)]

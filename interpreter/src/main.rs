@@ -1,10 +1,12 @@
 use std::borrow::Cow;
-use std::fs::OpenOptions;
+use std::collections::HashMap;
 use std::io::Cursor;
+
+use symbol::Symbol;
 
 use codespan::{CodeMap, FileName};
 use codespan_reporting::termcolor::{ColorChoice, StandardStream};
-use mochi::{tast, Error, LineParser, Scanner};
+use mochi::{Error, LineParser, Scanner, Type, ast::Line};
 use rustyline::{error::ReadlineError, Editor};
 
 fn main() {
@@ -22,6 +24,8 @@ fn main() {
     let parser = LineParser::new();
     let mut termerr = StandardStream::stderr(ColorChoice::Auto);
 
+    let type_environment = HashMap::<Symbol, Type>::new();
+
     'repl: loop {
         match input.readline("mochi:> ") {
             Ok(line) => {
@@ -31,21 +35,40 @@ fn main() {
                 codemap.add_filemap(FileName::Virtual(Cow::Borrowed("")), line.clone());
 
                 let scanner = Scanner::new(Cursor::new(line));
-                let ast = match parser.parse(scanner).map_err(Error::from) {
-                    Ok(ast) => ast,
+                let line = match parser.parse(scanner).map_err(Error::from) {
+                    Ok(line) => line,
                     Err(err) => {
-                        err.emit(&codemap, &mut termerr);
+                        let _ = err.emit(&codemap, &mut termerr);
                         continue 'repl;
                     }
                 };
-                println!("ast: {:?}", ast);
 
-                let tast = tast::Expr::from(ast);
-                println!("tast: {:?}", tast);
+                match line {
+                    Line::Expr(expr) => {
+                        println!("ast: {:?}", expr);
+
+                        use mochi::TypeCheck;
+                        let constraints = expr.constraints();
+                        println!("constraints: {:?}", constraints);
+
+                        let substitutions = mochi::unify(constraints, &type_environment);
+                        println!("substitutions: {:?}", substitutions);
+                    },
+                    Line::Decl(decl) => {
+                        println!("ast: {:?}", decl);
+
+                        use mochi::TypeCheck;
+                        let constraints = decl.constraints();
+                        println!("constraints: {:?}", constraints);
+
+                        let substitutions = mochi::unify(constraints, &type_environment);
+                        println!("substitutions: {:?}", substitutions);
+                    },
+                }
             }
             Err(ReadlineError::Interrupted) => {
-                println!("^C");
-                break;
+                // do nothing for now
+                continue 'repl;
             }
             Err(ReadlineError::Eof) => {
                 println!("^D");
