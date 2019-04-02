@@ -38,7 +38,17 @@ impl Error {
             }
             Error::Parse(ParseError::UnrecognizedToken(token, expected)) => {
                 let message = format!("Unrecognized token. Expecting: {}", expected.join(","));
-                Diagnostic::new_error(message)
+                let diagnostic = Diagnostic::new_error(message);
+                match token {
+                    Some((lo, token, hi)) => {
+                        let label = Label::new_primary(Span::new(
+                            ByteIndex(*lo as u32),
+                            ByteIndex(*hi as u32),
+                        ));
+                        diagnostic.with_label(label)
+                    }
+                    None => diagnostic,
+                }
             }
             _ => Diagnostic::new_error(format!("failed: {:?}", self)),
         };

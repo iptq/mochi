@@ -26,8 +26,12 @@ fn compile(file: File) -> Result<String, Error> {
     };
 
     use mochi::TypeCheck;
-    println!("constraints: {:?}", ast.constraints());
-    Ok(format!("ast: {:?}", ast))
+    // println!("constraints: {:?}", ast.constraints());
+
+    use mochi::SemanticChecker;
+    let mut checker = SemanticChecker::new();
+    let result = checker.visit_program(&ast);
+    Ok(format!("result: {:?}", result))
 }
 
 fn main() {
@@ -43,8 +47,15 @@ fn main() {
         );
     }
 
+    // let file = File::open(&opt.input).expect("couldn't open file");
+    // let scanner = Scanner::new(file);
+    // for token in scanner {
+    //     println!("token: {:?}", token);
+    // }
+
     let file = File::open(&opt.input).expect("couldn't open file");
     codemap.add_filemap_from_disk(&opt.input);
+
     match compile(file) {
         Ok(result) => println!("result: {:?}", result),
         Err(err) => {

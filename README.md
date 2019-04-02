@@ -27,11 +27,23 @@ func main =
 Todos
 -----
 
-- [x] Parsing
-- [ ] Type-checking
-- [ ] Structs
+- [x] Syntax
+  - [x] Custom Lexer
+  - [x] Parsing
+- [ ] Semantic Checking
+  - [x] Type Checking
+    - [x] Type Inference
+    - [ ] Typeclasses
+    - [ ] First-class Functions
+  - [x] Good Error Reporting
+- [ ] Modules
 - [ ] IR / Codegen
-- [ ] Interpreter
+  - [ ] Closure conversion
+- [ ] Garbage Collector
+- [ ] Standard Library
+  - [ ]
+- [x] Interpreter
+- [ ] Documentation (lol)
 
 Fixes:
 - [ ] Use a less-fucked RegexSet implementation.

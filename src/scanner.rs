@@ -184,6 +184,8 @@ impl<I: Read> Iterator for Scanner<I> {
                             self.queue
                                 .push_back(Ok((self.pos, Token::Dedent, self.pos)));
                         }
+                        // add a line just for good measure
+                        self.queue.push_back(Ok((self.pos, Token::Sep, self.pos)));
                     } else if whitespace > *n {
                         self.indents.push(whitespace);
                         self.queue
@@ -192,13 +194,15 @@ impl<I: Read> Iterator for Scanner<I> {
                 }
                 None => unreachable!("indent stack empty"),
             }
+        } else {
+            // add a new line
+            self.queue.push_back(Ok((self.pos, Token::Sep, self.pos)));
         }
 
         line = line.trim().to_owned();
         let mut end = 0;
         'outer: while end < line.len() {
             'inner: for (i, regex) in TABLE.iter().enumerate() {
-                // println!("searching: \"{}\"", &line[end..]);
                 match regex.find(&line[end..]) {
                     Some(mat) => {
                         let lo = mat.start();

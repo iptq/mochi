@@ -6,14 +6,28 @@ use symbol::Symbol;
 pub enum Type {
     Unit,
     Bool,
+
     Int32,
     Sint32,
     Int64,
     Sint64,
+
+    Float32,
+    Float64,
+
+    /// Record type: { a: S, b: T, .. }
     Record(Vec<(Symbol, Type)>),
+
+    /// Function type: a -> b
     Func(Box<Type>, Box<Type>),
+
+    /// Type name
     Var(Symbol),
 
+    /// Type function: * -> *
+    App(Box<Type>, Box<Type>),
+
+    // unification variable
     #[doc(hidden)]
     N(Symbol),
 }
@@ -25,13 +39,18 @@ impl Type {
 
     pub fn freevars(&self) -> BTreeSet<Symbol> {
         match self {
-            Type::Unit | Type::Bool | Type::Int32 | Type::Sint32 | Type::Int64 | Type::Sint64 => {
-                BTreeSet::new()
-            }
+            Type::Unit
+            | Type::Bool
+            | Type::Int32
+            | Type::Sint32
+            | Type::Int64
+            | Type::Sint64
+            | Type::Float32
+            | Type::Float64 => BTreeSet::new(),
             Type::Record(fields) => fields.iter().fold(BTreeSet::new(), |a, b| {
                 a.union(&b.1.freevars()).into_iter().cloned().collect()
             }),
-            Type::Func(left, right) => left
+            Type::Func(left, right) | Type::App(left, right) => left
                 .freevars()
                 .into_iter()
                 .chain(right.freevars())
@@ -40,6 +59,3 @@ impl Type {
         }
     }
 }
-
-#[derive(Debug)]
-pub struct TypeFunc(pub Type, pub Type);

@@ -9,10 +9,10 @@ grammar;
 
 pub Program: Program = MultiPunct<Sep, Decl> => Program(<>);
 
-// todo: actually support repl commands?
+// TODO: actually support repl commands?
 pub Line: Line = Sep* <LineInner> Sep*;
 
-/////
+////
 
 LineInner: Line = {
     Expr => Line::Expr(<>),
@@ -61,7 +61,7 @@ Expr4: Expr = {
 
 Extern: Extern = "extern" <name:Ident> ":" <ty:TypeLiteral> => Extern { name, ty };
 
-Func: Func = "func" <name:Ident> <args:FuncArg*> <returns:FuncReturn?> "=" <body:Body<MultiPunct<Sep, Stmt>>> => Func { name, args, returns: returns.unwrap_or_else(|| Type::Unit), body, ty: Type::gen() };
+Func: Func = "func" <name:Ident> <args:FuncArg*> <returns:FuncReturn?> "=" <body:Body<MultiPunctOne<Sep, Stmt>>> => Func { name, args, returns: returns.unwrap_or_else(|| Type::Unit), body, ty: Type::gen() };
 
 FuncArg: FuncArg = {
     "(" <name:Ident> ":" <ty:TypeLiteral> ")" => FuncArg(name, ty),
@@ -118,15 +118,6 @@ UsePath: Vec<Path> = {
     },
 };
 
-// use a.(b, c)
-
-// use a.(b.(c, h), d.(e.f, g))
-// -
-// use a.b.c
-// use a.b.h
-// use a.d.e.f
-// use a.d.g
-
 // macros
 
 Sep = {
@@ -147,6 +138,14 @@ MultiPunct<D, T>: Vec<T> = {
             v.insert(0, f);
             v
         },
+    }
+}
+
+MultiPunctOne<D, T>: Vec<T> = {
+    <f:T> <v:(D+ <T>)*> D* => {
+        let mut v = v;
+        v.insert(0, f);
+        v
     }
 }
 

@@ -10,5 +10,5 @@ indent_style = space
 [*.rs]
 indent_size = 4
 
-[*.{mo,yml}]
+[*.{mo,yml,sublime-syntax}]
 indent_size = 2

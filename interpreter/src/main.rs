@@ -6,7 +6,7 @@ use symbol::Symbol;
 
 use codespan::{CodeMap, FileName};
 use codespan_reporting::termcolor::{ColorChoice, StandardStream};
-use mochi::{Error, LineParser, Scanner, Type, ast::Line};
+use mochi::{ast::Line, Error, LineParser, Scanner, Type};
 use rustyline::{error::ReadlineError, Editor};
 
 fn main() {
@@ -16,6 +16,7 @@ fn main() {
         path.push(".mochi_history");
         path
     });
+
     // silently fail
     if let Some(path) = history_file.as_ref() {
         let _ = input.load_history(&path);
@@ -23,8 +24,7 @@ fn main() {
 
     let parser = LineParser::new();
     let mut termerr = StandardStream::stderr(ColorChoice::Auto);
-
-    let type_environment = HashMap::<Symbol, Type>::new();
+    let type_environment = HashMap::new();
 
     'repl: loop {
         match input.readline("mochi:> ") {
@@ -32,7 +32,7 @@ fn main() {
                 input.add_history_entry(line.as_ref());
 
                 let mut codemap = CodeMap::new();
-                codemap.add_filemap(FileName::Virtual(Cow::Borrowed("")), line.clone());
+                codemap.add_filemap(FileName::Virtual(Cow::Borrowed("input")), line.clone());
 
                 let scanner = Scanner::new(Cursor::new(line));
                 let line = match parser.parse(scanner).map_err(Error::from) {
@@ -53,7 +53,7 @@ fn main() {
 
                         let substitutions = mochi::unify(constraints, &type_environment);
                         println!("substitutions: {:?}", substitutions);
-                    },
+                    }
                     Line::Decl(decl) => {
                         println!("ast: {:?}", decl);
 
@@ -63,7 +63,7 @@ fn main() {
 
                         let substitutions = mochi::unify(constraints, &type_environment);
                         println!("substitutions: {:?}", substitutions);
-                    },
+                    }
                 }
             }
             Err(ReadlineError::Interrupted) => {
