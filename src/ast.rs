@@ -13,7 +13,17 @@ pub enum Line {
 }
 
 #[derive(Debug)]
-pub struct Class {}
+pub struct Trait {}
+
+#[derive(Debug)]
+pub struct Struct {
+    pub fields: Vec<StructField>,
+}
+
+#[derive(Debug)]
+pub struct StructField {
+
+}
 
 #[derive(Debug)]
 pub struct Decl {
@@ -23,9 +33,10 @@ pub struct Decl {
 
 #[derive(Debug)]
 pub enum DeclKind {
-    Class(Class),
+    Trait(Trait),
     Extern(Extern),
     Func(Func),
+    Struct(Struct),
     Type(Type),
     Use(Use),
 }

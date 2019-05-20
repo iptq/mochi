@@ -5,14 +5,13 @@ use lalrpop_util::lalrpop_mod;
 
 lalrpop_mod!(parser);
 
-#[cfg(feature = "codegen")]
-mod codegen;
-
 pub mod ast;
+mod codegen;
 mod errors;
+mod env;
 mod ir;
 mod scanner;
-mod typeck;
+pub mod typeck;
 mod types;
 
 pub use codegen::SemanticChecker;

@@ -15,11 +15,11 @@ pub enum Type {
     Float32,
     Float64,
 
-    /// Record type: { a: S, b: T, .. }
-    Record(Vec<(Symbol, Type)>),
+    /// Struct type: { a: S, b: T, .. }
+    Struct(Vec<(Symbol, Type)>),
 
     /// Function type: a -> b
-    Func(Box<Type>, Box<Type>),
+    Func(Vec<Type>, Box<Type>),
 
     /// Type name
     Var(Symbol),
@@ -47,7 +47,7 @@ impl Type {
             | Type::Sint64
             | Type::Float32
             | Type::Float64 => BTreeSet::new(),
-            Type::Record(fields) => fields.iter().fold(BTreeSet::new(), |a, b| {
+            Type::Struct(fields) => fields.iter().fold(BTreeSet::new(), |a, b| {
                 a.union(&b.1.freevars()).into_iter().cloned().collect()
             }),
             Type::Func(left, right) | Type::App(left, right) => left

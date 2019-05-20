@@ -7,5 +7,5 @@ edition = "2018"
 [dependencies]
 codespan = "0.2"
 codespan-reporting = "0.2"
-mochi = { path = "..", features = ["codegen"] }
+mochi = { path = ".." }
 structopt = "0.2"

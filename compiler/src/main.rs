@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::path::PathBuf;
+use std::collections::HashMap;
 
 use codespan::CodeMap;
 use codespan_reporting::{
@@ -20,18 +21,25 @@ fn compile(file: File) -> Result<String, Error> {
     let parser = ProgramParser::new();
 
     let scanner = Scanner::new(file);
-    let ast = match parser.parse(scanner) {
-        Ok(ast) => ast,
-        Err(err) => return Err(Error::from(err)),
-    };
+    let mut ast = parser.parse(scanner)?;
 
-    use mochi::TypeCheck;
-    // println!("constraints: {:?}", ast.constraints());
+    println!("ast: {:?}", ast);
 
-    use mochi::SemanticChecker;
-    let mut checker = SemanticChecker::new();
-    let result = checker.visit_program(&ast);
-    Ok(format!("result: {:?}", result))
+    use mochi::typeck::{TypeCheck, unify};
+    let constraints = ast.constraints();
+    let mut type_env = HashMap::new();
+    println!("constraints: {:?}", constraints);
+    let subst = unify(constraints, &mut type_env)?;
+    println!("substitutions: {:?}", subst);
+    ast.apply_subst(&subst);
+
+    // make sure there's no more constraints
+    assert!(ast.constraints().is_empty());
+
+    // use mochi::SemanticChecker;
+    // let mut checker = SemanticChecker::new();
+    // let result = checker.visit_program(&ast);
+    Ok(format!("result: {:?}", ast))
 }
 
 fn main() {
@@ -46,12 +54,6 @@ fn main() {
             &Diagnostic::new_error("input file doesn't exist"),
         );
     }
-
-    // let file = File::open(&opt.input).expect("couldn't open file");
-    // let scanner = Scanner::new(file);
-    // for token in scanner {
-    //     println!("token: {:?}", token);
-    // }
 
     let file = File::open(&opt.input).expect("couldn't open file");
     codemap.add_filemap_from_disk(&opt.input);

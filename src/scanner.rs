@@ -12,13 +12,14 @@ use crate::Spanned;
 
 #[derive(Debug, Clone)]
 pub enum Token {
-    KwdClass,
     KwdExtern,
     KwdFor,
     KwdFunc,
     KwdIn,
     KwdLet,
     KwdMatch,
+    KwdStruct,
+    KwdTrait,
     KwdUse,
 
     SymArrow,
@@ -209,13 +210,14 @@ impl<I: Read> Iterator for Scanner<I> {
                         let hi = mat.end();
                         let tok = match i {
                             0 => match mat.as_str() {
-                                "class" => Token::KwdClass,
                                 "extern" => Token::KwdExtern,
                                 "for" => Token::KwdFor,
                                 "func" => Token::KwdFunc,
                                 "in" => Token::KwdIn,
                                 "let" => Token::KwdLet,
                                 "match" => Token::KwdMatch,
+                                "struct" => Token::KwdStruct,
+                                "trait" => Token::KwdTrait,
                                 "use" => Token::KwdUse,
                                 name => Token::Ident(name.into()),
                             },

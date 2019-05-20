@@ -1,2 +1,2 @@
 func main =
-  print "Hello, world!" ()
+  print "hello"

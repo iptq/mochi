@@ -19,11 +19,12 @@ LineInner: Line = {
     Decl => Line::Decl(<>),
 };
 
-Class: Class = "class" Ident => Class { };
+Trait: Trait = "trait" Ident => Trait { };
 
 Decl: Decl = {
     <lo:@L> <_extern:Extern> <hi:@R> => Decl { kind: DeclKind::Extern(_extern), pos: (lo, hi) },
-    <lo:@L> <class:Class> <hi:@R> => Decl { kind: DeclKind::Class(class), pos: (lo, hi) },
+    <lo:@L> <_struct:Struct> <hi:@R> => Decl { kind: DeclKind::Struct(_struct), pos: (lo, hi) },
+    <lo:@L> <_trait:Trait> <hi:@R> => Decl { kind: DeclKind::Trait(_trait), pos: (lo, hi) },
     <lo:@L> <func:Func> <hi:@R> => Decl { kind: DeclKind::Func(func), pos: (lo, hi) },
     <lo:@L> <_use:Use> <hi:@R> => Decl { kind: DeclKind::Use(_use), pos: (lo, hi) },
 };
@@ -61,7 +62,7 @@ Expr4: Expr = {
 
 Extern: Extern = "extern" <name:Ident> ":" <ty:TypeLiteral> => Extern { name, ty };
 
-Func: Func = "func" <name:Ident> <args:FuncArg*> <returns:FuncReturn?> "=" <body:Body<MultiPunctOne<Sep, Stmt>>> => Func { name, args, returns: returns.unwrap_or_else(|| Type::Unit), body, ty: Type::gen() };
+Func: Func = "func" <name:Ident> <args:FuncArg*> <returns:FuncReturn?> "=" <body:Body<MultiPunctOne<Sep, Stmt>>> => Func { name, args, returns: returns.unwrap_or_else(|| Type::gen()), body, ty: Type::gen() };
 
 FuncArg: FuncArg = {
     "(" <name:Ident> ":" <ty:TypeLiteral> ")" => FuncArg(name, ty),
@@ -98,6 +99,15 @@ Stmt: Stmt = {
     <lo:@L> "let" <lvalue:LValue> "=" <expr:Expr> <hi:@R> => Stmt { kind: StmtKind::Let(lvalue, expr), pos: (lo, hi) },
     <lo:@L> "for" <pat:Pattern> "in" <expr:Expr> ":" <body:Body<MultiPunct<Sep, Stmt>>> <hi:@R> => Stmt { kind: StmtKind::ForLoop(pat, expr, body), pos: (lo, hi) },
 };
+
+Struct: Struct = "struct" Ident <generics:Ident*> <fields:StructInner> => Struct { fields };
+
+StructInner: Vec<StructField> = {
+    "(" ")" => Vec::new(),
+    "=" <fields:Body<MultiPunctOne<Sep, StructField>>> => fields,
+};
+
+StructField: StructField = Ident ":" TypeLiteral => StructField {};
 
 TypeLiteral: Type = {
     <ty:TypeLiteral2> => ty,
@@ -182,13 +192,14 @@ extern {
     type Error = crate::ParseError;
 
     enum crate::scanner::Token {
-        "class" => Token::KwdClass,
         "extern" => Token::KwdExtern,
         "for" => Token::KwdFor,
         "func" => Token::KwdFunc,
         "in" => Token::KwdIn,
         "let" => Token::KwdLet,
         "match" => Token::KwdMatch,
+        "struct" => Token::KwdStruct,
+        "trait" => Token::KwdTrait,
         "use" => Token::KwdUse,
 
         "->" => Token::SymArrow,
