@@ -13,15 +13,33 @@ pub Decl: Decl = {
 };
 
 pub Func: Func = {
-    "fn" <name:Ident> ":" <body:Body<MultiPunctOne<Sep, Stmt>>> => Func { name, body },
+    "fn" <name:Ident> <args:FuncArg*> <returns:FuncReturn?> ":" <body:Body<MultiPunctOne<Sep, Stmt>>> => Func { name, args, body, returns: returns.unwrap_or_else(|| Type::gen()) },
 };
 
-pub Stmt: Stmt = {
+FuncArg: (Symbol, Type) = {
+    "(" <name:Ident> ":" <ty:TypeLiteral> ")" => (name, ty),
+    <name:Ident> => (name, Type::gen()),
+};
+
+FuncReturn: Type = "->" <ty:TypeLiteral> => ty;
+
+Stmt: Stmt = {
+    <expr:Expr> => Stmt::Expr(expr),
     "return" <expr:Expr> => Stmt::Return(expr),
 };
 
-pub Expr: Expr = {
+Expr: Expr = {
     Int => Expr::Int(<>.parse::<i64>().unwrap()),
+};
+
+TypeLiteral: Type = {
+    <ty:TypeLiteral2> => ty,
+    <ty1:TypeLiteral2> "->" <ty2:TypeLiteral> => Type::Func(Vec::new(), Box::new(ty2)),
+};
+
+TypeLiteral2: Type = {
+    <name:Ident> => Type::Name(name),
+    "(" <ty:TypeLiteral> ")" => ty,
 };
 
 // util =======================================================================

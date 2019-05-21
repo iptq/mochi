@@ -3,7 +3,7 @@ use std::io::Write;
 use std::path::Path;
 use std::str::FromStr;
 
-use cranelift::prelude::*;
+use cranelift::prelude::{settings::Flags, *};
 use cranelift_faerie::{FaerieBackend, FaerieBuilder, FaerieTrapCollection};
 use cranelift_module::{Linkage, Module};
 
@@ -20,7 +20,7 @@ impl Codegen {
         let mut flag_builder = settings::builder();
         flag_builder.enable("is_pic").unwrap();
         let isa_builder = isa::lookup(triple!("x86_64-unknown-unknown-elf")).unwrap();
-        let isa = isa_builder.finish(settings::Flags::new(flag_builder));
+        let isa = isa_builder.finish(Flags::new(flag_builder));
 
         let builder = FaerieBuilder::new(
             isa,
@@ -39,7 +39,7 @@ impl Codegen {
         }
     }
 
-    pub fn compile_func(&mut self, func: Func) {
+    pub fn compile_func(&mut self, func: &Func) {
         let int = self.module.target_config().pointer_type();
         self.ctx.func.signature.returns.push(AbiParam::new(int));
         let mut builder = FunctionBuilder::new(&mut self.ctx.func, &mut self.builder_ctx);
@@ -86,6 +86,9 @@ pub struct FunctionTranslator<'a> {
 impl<'a> FunctionTranslator<'a> {
     pub fn translate_stmt(&mut self, stmt: &Stmt) {
         match stmt {
+            Stmt::Expr(expr) => {
+                self.translate_expr(expr);
+            }
             Stmt::Return(expr) => {
                 let v = self.translate_expr(expr);
                 self.builder.ins().return_(&[v]);
@@ -98,6 +101,10 @@ impl<'a> FunctionTranslator<'a> {
             Expr::Int(n) => {
                 let int = self.module.target_config().pointer_type();
                 self.builder.ins().iconst(int, *n)
+            }
+            Expr::Call(func, args) => {
+                let int = self.module.target_config().pointer_type();
+                self.builder.ins().iconst(int, 117)
             }
         }
     }
