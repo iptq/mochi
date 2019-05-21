@@ -1,0 +1,127 @@
+use symbol::Symbol;
+
+use crate::ast::*;
+use crate::scanner::Token;
+
+#[LALR]
+grammar;
+
+pub Program: Program = MultiPunct<Sep, Decl> => Program(<>);
+
+pub Decl: Decl = {
+    <func:Func> => Decl::Func(func),
+};
+
+pub Func: Func = {
+    "fn" <name:Ident> ":" <body:Body<MultiPunctOne<Sep, Stmt>>> => Func { name, body },
+};
+
+pub Stmt: Stmt = {
+    "return" <expr:Expr> => Stmt::Return(expr),
+};
+
+pub Expr: Expr = {
+    Int => Expr::Int(<>.parse::<i64>().unwrap()),
+};
+
+// util =======================================================================
+
+Sep = {
+    ";",
+    LineSep,
+};
+
+Body<T>: T = {
+    "(" <t:T> ")" => t,
+    Sep* Indent <t:T> Dedent => t,
+};
+
+MultiPunct<D, T>: Vec<T> = {
+    <f:T?> <v:(D+ <T>)*> D* => match f {
+        None => v,
+        Some(f) => {
+            let mut v = v;
+            v.insert(0, f);
+            v
+        },
+    }
+}
+
+MultiPunctOne<D, T>: Vec<T> = {
+    <f:T> <v:(D+ <T>)*> D* => {
+        let mut v = v;
+        v.insert(0, f);
+        v
+    }
+}
+
+Punct<D, T>: Vec<T> = {
+    <f:T?> <v:(D <T>)*> D? => match f {
+        None => v,
+        Some(f) => {
+            let mut v = v;
+            v.insert(0, f);
+            v
+        },
+    }
+}
+
+PunctOne<D, T>: Vec<T> = {
+    <f:T> <v:(D <T>)*> D? => {
+        let mut v = v;
+        v.insert(0, f);
+        v
+    }
+}
+
+PunctTwo<D, T>: Vec<T> = {
+    <f:T> D <s:T> <v:(D <T>)*> D? => {
+        let mut v = v;
+        v.insert(0, f);
+        v.insert(1, s);
+        v
+    }
+}
+
+extern {
+    type Location = usize;
+    type Error = crate::scanner::ScanError;
+
+    enum crate::scanner::Token {
+        "class" => Token::KwdClass,
+        "extern" => Token::KwdExtern,
+        "for" => Token::KwdFor,
+        "fn" => Token::KwdFn,
+        "in" => Token::KwdIn,
+        "let" => Token::KwdLet,
+        "match" => Token::KwdMatch,
+        "return" => Token::KwdReturn,
+        "use" => Token::KwdUse,
+
+        "->" => Token::SymArrow,
+        "=>" => Token::SymDblArrow,
+        ".." => Token::SymDblDot,
+
+        ":" => Token::SymColon,
+        "," => Token::SymComma,
+        "-" => Token::SymDash,
+        "." => Token::SymDot,
+        "=" => Token::SymEqual,
+        "(" => Token::SymParenL,
+        ")" => Token::SymParenR,
+        "%" => Token::SymPercent,
+        "+" => Token::SymPlus,
+        ";" => Token::SymSemicolon,
+        "/" => Token::SymSlash,
+        "*" => Token::SymStar,
+        "_" => Token::SymUnderscore,
+
+        Int => Token::IntLiteral(<String>),
+        String => Token::StringLiteral(<String>),
+        Ident => Token::Ident(<Symbol>),
+
+        Indent => Token::Indent,
+        Dedent => Token::Dedent,
+        LineSep => Token::Sep,
+    }
+}
