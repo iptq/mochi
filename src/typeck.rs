@@ -24,6 +24,10 @@ pub fn get_constraints_decl(type_env: &mut Environment<Symbol, Type>, constraint
 pub fn get_constraints_stmt(type_env: &mut Environment<Symbol, Type>, constraints: &mut HashSet<Constraint>, stmt: &AstStmt) {
     match stmt {
         AstStmt::Return(expr) | AstStmt::Expr(expr) => get_constraints_expr(type_env, constraints, expr),
+        AstStmt::If(cond, tbody, fbody) => {
+            // TODO: finish
+            get_constraints_expr(type_env, constraints, cond);
+        }
     }
 }
 

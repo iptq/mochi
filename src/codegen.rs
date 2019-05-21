@@ -93,6 +93,10 @@ impl<'a> FunctionTranslator<'a> {
                 let v = self.translate_expr(expr);
                 self.builder.ins().return_(&[v]);
             }
+            Stmt::If(cond, tbody, fbody) => {
+                self.translate_expr(cond);
+                // TODO: finish
+            }
         }
     }
 

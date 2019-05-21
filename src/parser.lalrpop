@@ -13,11 +13,13 @@ pub Decl: Decl = {
 };
 
 pub Func: Func = {
-    "fn" <name:Ident> <args:FuncArg*> <returns:FuncReturn?> ":" <body:Body<MultiPunctOne<Sep, Stmt>>> => Func { name, args, body, returns: returns.unwrap_or_else(|| Type::gen()) },
+    "fn" <name:Ident> <args:FuncArgs?> <returns:FuncReturn?> ":" <body:Body<MultiPunctOne<Sep, Stmt>>> => Func { name, args: args.unwrap_or_else(|| Vec::new()), body, returns: returns.unwrap_or_else(|| Type::gen()) },
 };
 
+FuncArgs: Vec<(Symbol, Type)> = "(" <args:Punct<",", FuncArg>> ")" => args;
+
 FuncArg: (Symbol, Type) = {
-    "(" <name:Ident> ":" <ty:TypeLiteral> ")" => (name, ty),
+    <name:Ident> ":" <ty:TypeLiteral> => (name, ty),
     <name:Ident> => (name, Type::gen()),
 };
 
@@ -26,9 +28,74 @@ FuncReturn: Type = "->" <ty:TypeLiteral> => ty;
 Stmt: Stmt = {
     <expr:Expr> => Stmt::Expr(expr),
     "return" <expr:Expr> => Stmt::Return(expr),
+    "if" <cond:Expr> => Stmt::If(cond, Vec::new(), Vec::new()),
 };
 
-Expr: Expr = {
+Expr: Expr = ExprLogicalOr => <>;
+
+ExprLogicalOr: Expr = {
+    <left:ExprLogicalOr> "||" <right:ExprLogicalAnd> => Expr::BinOp(BinOp::LogicalOr, Box::new(left), Box::new(right)),
+    ExprLogicalAnd => <>,
+};
+
+ExprLogicalAnd: Expr = {
+    <left:ExprLogicalAnd> "&&" <right:ExprBitwiseOr> => Expr::BinOp(BinOp::LogicalAnd, Box::new(left), Box::new(right)),
+    ExprBitwiseOr => <>,
+};
+
+ExprBitwiseOr: Expr = {
+    <left:ExprBitwiseOr> "|" <right:ExprBitwiseXor> => Expr::BinOp(BinOp::BitwiseOr, Box::new(left), Box::new(right)),
+    ExprBitwiseXor => <>,
+};
+
+ExprBitwiseXor: Expr = {
+    <left:ExprBitwiseXor> "^" <right:ExprBitwiseAnd> => Expr::BinOp(BinOp::BitwiseXor, Box::new(left), Box::new(right)),
+    ExprBitwiseAnd => <>,
+};
+
+ExprBitwiseAnd: Expr = {
+    <left:ExprBitwiseAnd> "&" <right:ExprEquality> => Expr::BinOp(BinOp::BitwiseAnd, Box::new(left), Box::new(right)),
+    ExprEquality => <>,
+};
+
+ExprEquality: Expr = {
+    <left:ExprEquality> "==" <right:ExprComparison> => Expr::BinOp(BinOp::Equals, Box::new(left), Box::new(right)),
+    <left:ExprEquality> "!=" <right:ExprComparison> => Expr::BinOp(BinOp::NotEquals, Box::new(left), Box::new(right)),
+    ExprComparison => <>,
+};
+
+ExprComparison: Expr = {
+    <left:ExprComparison> "<" <right:ExprShift> => Expr::BinOp(BinOp::LessThan, Box::new(left), Box::new(right)),
+    <left:ExprComparison> "<=" <right:ExprShift> => Expr::BinOp(BinOp::LessThanEquals, Box::new(left), Box::new(right)),
+    <left:ExprComparison> ">" <right:ExprShift> => Expr::BinOp(BinOp::GreaterThan, Box::new(left), Box::new(right)),
+    <left:ExprComparison> ">=" <right:ExprShift> => Expr::BinOp(BinOp::GreaterThanEquals, Box::new(left), Box::new(right)),
+    ExprShift => <>,
+};
+
+ExprShift: Expr = {
+    <left:ExprShift> "<<" <right:ExprTerms> => Expr::BinOp(BinOp::LeftShift, Box::new(left), Box::new(right)),
+    <left:ExprShift> ">>" <right:ExprTerms> => Expr::BinOp(BinOp::RightShift, Box::new(left), Box::new(right)),
+    ExprTerms => <>,
+};
+
+ExprTerms: Expr = {
+    <left:ExprTerms> "+" <right:ExprFactors> => Expr::BinOp(BinOp::Add, Box::new(left), Box::new(right)),
+    <left:ExprTerms> "-" <right:ExprFactors> => Expr::BinOp(BinOp::Sub, Box::new(left), Box::new(right)),
+};
+
+ExprFactors: Expr = {
+    <left:ExprFactors> "*" <right:ExprUnary> => Expr::BinOp(BinOp::Mul, Box::new(left), Box::new(right)),
+    <left:ExprFactors> "/" <right:ExprUnary> => Expr::BinOp(BinOp::Div, Box::new(left), Box::new(right)),
+    <left:ExprFactors> "%" <right:ExprUnary> => Expr::BinOp(BinOp::Mod, Box::new(left), Box::new(right)),
+    ExprUnary => <>,
+};
+
+ExprUnary: Expr = {
+    "!" <expr:ExprFinal> => Expr::UnOp(UnOp::LogicalNot, Box::new(expr)),
+    "~" <expr:ExprFinal> => Expr::UnOp(UnOp::BitwiseNot, Box::new(expr)),
+};
+
+ExprFinal: Expr = {
     Int => Expr::Int(<>.parse::<i64>().unwrap()),
 };
 
@@ -110,6 +177,7 @@ extern {
         "extern" => Token::KwdExtern,
         "for" => Token::KwdFor,
         "fn" => Token::KwdFn,
+        "if" => Token::KwdIf,
         "in" => Token::KwdIn,
         "let" => Token::KwdLet,
         "match" => Token::KwdMatch,
@@ -119,19 +187,34 @@ extern {
         "->" => Token::SymArrow,
         "=>" => Token::SymDblArrow,
         ".." => Token::SymDblDot,
+        "==" => Token::SymDblEqual,
+        ">=" => Token::SymGreaterThanEquals,
+        "<<" => Token::SymLeftShift,
+        "<=" => Token::SymLessThanEquals,
+        "||" => Token::SymLogicalOr,
+        "&&" => Token::SymLogicalAnd,
+        "!=" => Token::SymNotEqual,
+        ">>" => Token::SymRightShift,
 
+        "&" => Token::SymAmpersand,
+        "!" => Token::SymBang,
+        "^" => Token::SymCaret,
         ":" => Token::SymColon,
         "," => Token::SymComma,
         "-" => Token::SymDash,
         "." => Token::SymDot,
         "=" => Token::SymEqual,
+        ">" => Token::SymGreaterThan,
+        "<" => Token::SymLessThan,
         "(" => Token::SymParenL,
         ")" => Token::SymParenR,
         "%" => Token::SymPercent,
+        "|" => Token::SymPipe,
         "+" => Token::SymPlus,
         ";" => Token::SymSemicolon,
         "/" => Token::SymSlash,
         "*" => Token::SymStar,
+        "~" => Token::SymTilde,
         "_" => Token::SymUnderscore,
 
         Int => Token::IntLiteral(<String>),

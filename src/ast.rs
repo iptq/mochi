@@ -19,6 +19,34 @@ impl Type {
 pub struct Path(Vec<Symbol>);
 
 #[derive(Debug)]
+pub enum BinOp {
+    LogicalOr,
+    LogicalAnd,
+    BitwiseOr,
+    BitwiseXor,
+    BitwiseAnd,
+    Equals,
+    NotEquals,
+    LessThan,
+    LessThanEquals,
+    GreaterThan,
+    GreaterThanEquals,
+    LeftShift,
+    RightShift,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+}
+
+#[derive(Debug)]
+pub enum UnOp {
+    LogicalNot,
+    BitwiseNot,
+}
+
+#[derive(Debug)]
 pub struct Program(pub Vec<Decl>);
 
 #[derive(Debug)]
@@ -57,10 +85,13 @@ pub struct Func {
 pub enum Stmt {
     Expr(Expr),
     Return(Expr),
+    If(Expr, Vec<Stmt>, Vec<Stmt>),
 }
 
 #[derive(Debug)]
 pub enum Expr {
     Int(i64),
     Call(Box<Expr>, Vec<Expr>),
+    BinOp(BinOp, Box<Expr>, Box<Expr>),
+    UnOp(UnOp, Box<Expr>),
 }
